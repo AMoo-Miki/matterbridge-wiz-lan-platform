@@ -1,0 +1,8 @@
+src/
+.github/
+eslint.config.mjs
+tsconfig.json
+.idea
+node_modules/
+*.tsbuildinfo
+.eslintcache
