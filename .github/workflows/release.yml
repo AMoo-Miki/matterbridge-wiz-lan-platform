@@ -1,0 +1,50 @@
+on:
+  push:
+    branches: ['main']
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run clean install
+        run: npm ci
+
+      - name: Setup Matterbridge
+        run: |
+          npm i -g matterbridge
+          npm link matterbridge
+
+      - name: Lint, clean, and build
+        run: |
+          npm run lint
+          npm run clean
+          npm run build
+
+      - name: Publish to NPM
+        id: publish
+        uses: JS-DevTools/npm-publish@v3
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          provenance: true
+          strategy: upgrade
+          access: public
+
+      - name: Create Release
+        if: ${{ steps.publish.outputs.type }}
+        run: gh release create "$VERSION" --title="Release ${VERSION#v}" --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.publish.outputs.version }}
