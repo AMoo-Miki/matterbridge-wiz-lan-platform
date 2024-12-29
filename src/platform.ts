@@ -2,7 +2,6 @@ import {
   bridgedNode,
   ColorControl,
   ColorControlCluster,
-  colorTemperatureLight,
   LevelControl,
   LevelControlCluster,
   Matterbridge,
@@ -50,7 +49,7 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
   addDevice(deviceId: string, { state, ...data }: { state: StateMap } & Omit<Dict, 'state'>) {
     this.log.debug('Adding device:', deviceId, JSON.stringify(data));
 
-    const matterbridgeDevice = new MatterbridgeDevice([bridgedNode, powerSource], {
+    const matterbridgeDevice = new MatterbridgeDevice([data.type, bridgedNode, powerSource], {
       uniqueStorageKey: `wiz-${deviceId}`,
     });
     matterbridgeDevice.log.logName = `Wiz:${deviceId}`;
@@ -87,8 +86,6 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
       }
 
       if (data.features.includes(ColorControl.Feature.HueSaturation)) {
-        matterbridgeDevice.addDeviceType(colorTemperatureLight);
-
         matterbridgeDevice.createHsColorControlClusterServer(
           state.get(ColorControl.Feature.HueSaturation + '#Hue')?.value,
           state.get(ColorControl.Feature.HueSaturation + '#Saturation')?.value,
@@ -113,14 +110,11 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
           const { r, g, b, w } = hsColorToRgbw(h, request.saturation);
           this.lanComm.setState(deviceId, { state: true, r, g, b, w });
         });
+      } else if (data.features.includes(ColorControl.Feature.ColorTemperature)) {
+        matterbridgeDevice.createCtColorControlClusterServer(state.get(ColorControl.Feature.ColorTemperature)?.value);
       }
 
       if (data.features.includes(ColorControl.Feature.ColorTemperature)) {
-        if (!data.features.includes(ColorControl.Feature.HueSaturation)) {
-          matterbridgeDevice.addDeviceType(colorTemperatureLight);
-          matterbridgeDevice.createCtColorControlClusterServer(state.get(ColorControl.Feature.ColorTemperature)?.value);
-        }
-
         matterbridgeDevice.addCommandHandler('moveToColorTemperature', async ({ request }) => {
           const temp = Math.max(2200, Math.min(6500, Math.round(1e6 / request.colorTemperatureMireds)));
           this.lanComm.setState(deviceId, { state: true, temp });

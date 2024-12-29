@@ -1,7 +1,15 @@
 import EventEmitter from 'events';
 import dgram, { RemoteInfo } from 'dgram';
 import { AnsiLogger } from 'matterbridge/logger';
-import { ColorControl, LevelControl, OnOff, PlatformConfig } from 'matterbridge';
+import {
+  ColorControl,
+  colorTemperatureLight,
+  dimmableLight,
+  LevelControl,
+  OnOff,
+  onOffOutlet,
+  PlatformConfig,
+} from 'matterbridge';
 import { setTimeout as asyncTimeout } from 'timers/promises';
 import { Dict } from './types.js';
 import { getNetworks } from './utils.js';
@@ -137,9 +145,11 @@ export class LanComm extends EventEmitter {
     }
 
     if (destination) {
-      this.#log.debug(`[${(new Date()).toLocaleTimeString('en-US')}] [LanComm] Sending UDP to ${destination} > ${JSON.stringify(payload)}`);
+      this.#log.debug(`[${(new Date()).toLocaleTimeString('en-US')}] [LanComm] Sending UDP to ${destination} > ${JSON.stringify(
+        payload)}`);
     } else {
-      this.#log.debug(`[${(new Date()).toLocaleTimeString('en-US')}] [LanComm] Broadcasting UDP > ${JSON.stringify(payload)}`);
+      this.#log.debug(`[${(new Date()).toLocaleTimeString('en-US')}] [LanComm] Broadcasting UDP > ${JSON.stringify(
+        payload)}`);
     }
     socket.send(JSON.stringify(payload), OUTGOING_PORT, destination || '255.255.255.255');
   }
@@ -261,24 +271,33 @@ export class LanComm extends EventEmitter {
     if (moduleName.includes('SHRGB')) return {
       name: 'Wiz RGB Bulb',
       features: [OnOff.Feature.Lighting, LevelControl.Feature.Lighting, ColorControl.Feature.HueSaturation, ColorControl.Feature.ColorTemperature],
+      type: colorTemperatureLight,
     };
     if (moduleName.includes('MHWRGB')) return {
       name: 'Wiz LED Strip',
       features: [OnOff.Feature.Lighting, LevelControl.Feature.Lighting, ColorControl.Feature.HueSaturation, ColorControl.Feature.ColorTemperature],
+      type: colorTemperatureLight,
     };
     if (moduleName.includes('DHRGB')) return {
       name: 'Wiz Floor Lamp',
       features: [OnOff.Feature.Lighting, LevelControl.Feature.Lighting, ColorControl.Feature.HueSaturation, ColorControl.Feature.ColorTemperature],
+      type: colorTemperatureLight,
     };
     if (moduleName.includes('SHTW')) return {
       name: 'Wiz Tunable White Bulb',
       features: [OnOff.Feature.Lighting, LevelControl.Feature.Lighting, ColorControl.Feature.ColorTemperature],
+      type: colorTemperatureLight,
     };
     if (moduleName.includes('SHDW')) return {
       name: 'Wiz Dimmable White Bulb',
       features: [OnOff.Feature.Lighting, LevelControl.Feature.Lighting],
+      type: dimmableLight,
     };
-    if (moduleName.includes('SOCKET')) return { name: 'Wiz Outlet', features: [OnOff.Feature.Lighting] };
+    if (moduleName.includes('SOCKET')) return {
+      name: 'Wiz Outlet',
+      features: [OnOff.Feature.Lighting],
+      type: onOffOutlet,
+    };
     return {};
   }
 
