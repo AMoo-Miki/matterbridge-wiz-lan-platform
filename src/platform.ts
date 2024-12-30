@@ -14,7 +14,7 @@ import {
 } from 'matterbridge';
 import { AnsiLogger } from 'matterbridge/logger';
 import { LanComm } from './lib/lan-comm.js';
-import { Dict, StateMap } from './lib/types.js';
+import { Dict, State, StateMap } from './lib/types.js';
 import { hsColorToRgbw, rgbwToHsColor } from './lib/utils.js';
 
 export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
@@ -60,7 +60,7 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
 
     if (Array.isArray(data.features)) {
       if (data.features.includes(OnOff.Feature.Lighting)) {
-        matterbridgeDevice.createDefaultOnOffClusterServer(state.get(OnOff.Feature.Lighting)?.value);
+        matterbridgeDevice.createDefaultOnOffClusterServer(state.get(State.OnOff)?.value);
         matterbridgeDevice.createDefaultPowerSourceWiredClusterServer();
 
         matterbridgeDevice.addCommandHandler('on', async () => {
@@ -73,7 +73,7 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
       }
 
       if (data.features.includes(LevelControl.Feature.Lighting)) {
-        matterbridgeDevice.createDefaultLevelControlClusterServer(state.get(LevelControl.Feature.Lighting)?.value);
+        matterbridgeDevice.createDefaultLevelControlClusterServer(state.get(State.LightLevel)?.value);
 
         matterbridgeDevice.addCommandHandler('moveToLevel', async ({ request }) => {
           this.lanComm.setState(deviceId, { dimming: request.level });
@@ -87,9 +87,9 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
 
       if (data.features.includes(ColorControl.Feature.HueSaturation)) {
         matterbridgeDevice.createHsColorControlClusterServer(
-          state.get(ColorControl.Feature.HueSaturation + '#Hue')?.value,
-          state.get(ColorControl.Feature.HueSaturation + '#Saturation')?.value,
-          state.get(ColorControl.Feature.ColorTemperature)?.value,
+          state.get(State.ColorSaturation)?.value,
+          state.get(State.ColorSaturation)?.value,
+          state.get(State.ColorTemperature)?.value,
         );
 
         matterbridgeDevice.addCommandHandler('moveToHueAndSaturation', ({ request }) => {
@@ -111,7 +111,7 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
           this.lanComm.setState(deviceId, { state: true, r, g, b, w });
         });
       } else if (data.features.includes(ColorControl.Feature.ColorTemperature)) {
-        matterbridgeDevice.createCtColorControlClusterServer(state.get(ColorControl.Feature.ColorTemperature)?.value);
+        matterbridgeDevice.createCtColorControlClusterServer(state.get(State.ColorTemperature)?.value);
       }
 
       if (data.features.includes(ColorControl.Feature.ColorTemperature)) {
@@ -143,11 +143,11 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
     const state: StateMap = new Map();
 
     if ('state' in wizState) {
-      state.set(OnOff.Feature.Lighting, { clusterId: OnOffCluster.id, attribute: 'onOff', value: wizState.state });
+      state.set(State.OnOff, { clusterId: OnOffCluster.id, attribute: 'onOff', value: wizState.state });
     }
 
     if ('dimming' in wizState) {
-      state.set(LevelControl.Feature.Lighting, {
+      state.set(State.LightLevel, {
         clusterId: LevelControlCluster.id,
         attribute: 'currentLevel',
         value: Math.round((254 * wizState.dimming) / 100),
@@ -155,7 +155,7 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
     }
 
     if ('temp' in wizState) {
-      state.set(ColorControl.Feature.ColorTemperature, {
+      state.set(State.ColorTemperature, {
         clusterId: ColorControlCluster.id,
         attribute: 'colorTemperatureMireds',
         value: Math.max(147, Math.min(500, Math.round(1e6 / wizState.temp))),
@@ -164,12 +164,12 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
 
     if ('r' in wizState && 'g' in wizState && 'b' in wizState) {
       const { h, s } = rgbwToHsColor(wizState.r, wizState.g, wizState.b, wizState.w);
-      state.set(ColorControl.Feature.HueSaturation + '#Hue', {
+      state.set(State.ColorHue, {
         clusterId: ColorControlCluster.id,
         attribute: 'currentHue',
         value: h,
       });
-      state.set(ColorControl.Feature.HueSaturation + '#Saturation', {
+      state.set(State.ColorSaturation, {
         clusterId: ColorControlCluster.id,
         attribute: 'currentSaturation',
         value: s,
