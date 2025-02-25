@@ -1,0 +1,41 @@
+{
+  "title": "Matterbridge plugin for Wiz over LAN",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Plugin name",
+      "type": "string",
+      "readOnly": true
+    },
+    "type": {
+      "description": "Plugin type",
+      "type": "string",
+      "readOnly": true
+    },
+    "enableCachedDevices": {
+      "description": "Enable loading previously discovered devices from the cache during startup (this will reuse stored device information to speed up initialization)",
+      "type": "boolean",
+      "default": true
+    },
+    "resetDeviceCacheOnStartup": {
+      "description": "Reset the device cache on the next restart (it will clear the storage of already discovered devices and the cache files)",
+      "type": "boolean",
+      "default": false
+    },
+    "bindTo": {
+      "description": "IP address to bind the LAN communication to",
+      "type": "string",
+      "default": ""
+    },
+    "debug": {
+      "description": "Enable the debug for the plugin (development only)",
+      "type": "boolean",
+      "default": false
+    },
+    "unregisterOnShutdown": {
+      "description": "Unregister all devices on shutdown (development only)",
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

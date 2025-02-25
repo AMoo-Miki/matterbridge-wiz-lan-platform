@@ -1,12 +1,37 @@
-import { bridgedNode, OnOff, ColorControl, LevelControl, Matterbridge, MatterbridgeDynamicPlatform, MatterbridgeEndpoint, PlatformConfig, powerSource } from 'matterbridge';
+import path from 'node:path';
+import * as fs from 'node:fs/promises';
+import { setTimeout, clearTimeout } from 'node:timers';
+import {
+  bridgedNode,
+  OnOff,
+  ColorControl,
+  LevelControl,
+  Matterbridge,
+  MatterbridgeDynamicPlatform,
+  MatterbridgeEndpoint,
+  PlatformConfig,
+  powerSource,
+  BridgedDeviceBasicInformation,
+} from 'matterbridge';
 import { AnsiLogger } from 'matterbridge/logger';
+import { NodeStorage, NodeStorageManager } from 'matterbridge/storage';
 import { LanComm } from './lib/lan-comm.js';
 import { Dict, State, StateMap } from './lib/types.js';
 import { hsColorToRgbw, rgbwToHsColor } from './lib/utils.js';
 
+interface StoredDevice {
+  id: string;
+  data: Omit<Dict, 'state'>;
+}
+
 export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
   readonly lanComm: LanComm;
   readonly knownDevices: Map<string, MatterbridgeEndpoint> = new Map();
+  readonly storedDevices: Map<string, StoredDevice> = new Map();
+
+  private nodeStorageManager?: NodeStorageManager;
+  private nodeStorage?: NodeStorage;
+  private saveTimer?: ReturnType<typeof setTimeout>;
 
   constructor(matterbridge: Matterbridge, log: AnsiLogger, config: PlatformConfig) {
     super(matterbridge, log, config);
@@ -31,6 +56,59 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
   override async onStart(reason?: string) {
     this.log.info('onStart called with reason:', reason ?? 'none');
 
+    // create NodeStorageManager
+    this.nodeStorageManager = new NodeStorageManager({
+      dir: path.join(this.matterbridge.matterbridgeDirectory, 'matterbridge-wiz-lan-platform'),
+      writeQueue: false,
+      expiredInterval: undefined,
+      logging: false,
+      forgiveParseErrors: true,
+    });
+    this.nodeStorage = await this.nodeStorageManager.createStorage('devices');
+
+    // Reset the storage if requested or load the stored devices
+    if (this.config.resetDeviceCacheOnStartup === true) {
+      this.config.resetDeviceCacheOnStartup = false;
+
+      this.log.info('Resetting cache...');
+      const storedDevices = await this.nodeStorage.get<StoredDevice[]>('DeviceIdentifiers', []);
+      for (const device of storedDevices) {
+        const fileName = path.join(this.matterbridge.matterbridgePluginDirectory, 'matterbridge-wiz-lan-platform', `${device.id}.json`);
+        try {
+          this.log.debug(`Deleting cache file: ${fileName}`);
+          await fs.unlink(fileName);
+          this.log.debug(`Deleted cache file: ${fileName}`);
+        } catch (error) {
+          this.log.error(`Failed to delete cache for device ${device.id} file ${fileName} error: ${error}`);
+        }
+      }
+
+      this.log.info('Resetting storage...');
+      await this.nodeStorage.clear();
+      this.storedDevices.clear();
+      await this.saveStoredDevices();
+      this.log.info('Reset of Shellies storage done!');
+    } else {
+      await this.loadStoredDevices();
+    }
+
+    //enableCachedDevices
+    if (this.config.enableCachedDevices === true) {
+      this.log.info(`Loading ${this.storedDevices.size} previously discovered device${this.storedDevices.size === 1 ? '' : 's'} from storage...`);
+      for (const storedDevice of this.storedDevices.values()) {
+        if (storedDevice.id === undefined) {
+          this.log.error(`Stored device ${storedDevice.id} is not valid; enable resetDeviceCacheOnStartup in plugin config and restart.`);
+          continue;
+        }
+
+        this.addDevice(storedDevice.id, {
+          state: new Map(),
+          ...storedDevice.data,
+          ...this.lanComm.getDeviceType(storedDevice.data.moduleName, storedDevice.id),
+        });
+      }
+    }
+
     await this.lanComm.start();
   }
 
@@ -40,8 +118,51 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
     this.lanComm.end();
   }
 
-  addDevice(deviceId: string, { state, ...data }: { state: StateMap } & Omit<Dict, 'state'>) {
-    this.log.debug('Adding device:', deviceId, JSON.stringify(data));
+  private storeDevice(deviceId: string, data: Dict) {
+    this.storedDevices.set(deviceId, {
+      id: deviceId,
+      data: {
+        address: data.address,
+        moduleName: data.moduleName,
+        fwVersion: data.fwVersion,
+        name: data.name,
+        label: data.label?.trim?.() || undefined,
+      },
+    });
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(async () => {
+      await this.saveStoredDevices();
+    }, 10000);
+  }
+
+  private async saveStoredDevices(): Promise<boolean> {
+    if (!this.nodeStorage) {
+      this.log.error('NodeStorage is not initialized');
+      return false;
+    }
+    this.log.debug(`Saving ${this.storedDevices.size} discovered devices to the storage...`);
+    await this.nodeStorage.set<StoredDevice[]>('DeviceIdentifiers', Array.from(this.storedDevices.values()));
+    return true;
+  }
+
+  private async loadStoredDevices(): Promise<boolean> {
+    if (!this.nodeStorage) {
+      this.log.error('NodeStorage is not initialized');
+      return false;
+    }
+    const storedDevices = await this.nodeStorage.get<StoredDevice[]>('DeviceIdentifiers', []);
+    for (const device of storedDevices) this.storedDevices.set(device.id, device);
+    this.log.info(`Storage contains ${this.storedDevices.size} previously discovered device${this.storedDevices.size === 1 ? '' : 's'}`);
+    return true;
+  }
+
+  private addDevice(deviceId: string, { state, ...data }: { state: StateMap } & Omit<Dict, 'state'>) {
+    if (this.knownDevices.has(deviceId)) {
+      this.changeState(deviceId, state, state);
+      return;
+    }
+
+    this.log.info('Adding device:', deviceId, JSON.stringify(data));
 
     const matterbridgeDevice = new MatterbridgeEndpoint([data.type, bridgedNode, powerSource], { uniqueStorageKey: `wiz-${deviceId}` }, this.config.debug as boolean);
     matterbridgeDevice.log.logName = `Wiz:${deviceId}`;
@@ -49,6 +170,11 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
       .createDefaultIdentifyClusterServer()
       .createDefaultGroupsClusterServer()
       .createDefaultBridgedDeviceBasicInformationClusterServer(data.name, deviceId, 0xfff1, 'Wiz', data.moduleName, undefined, data.fwVersion);
+
+    if (data.label?.trim?.()) {
+      const informationOptions = matterbridgeDevice.getClusterServerOptions(BridgedDeviceBasicInformation.Cluster.id);
+      informationOptions!.nodeLabel = data.label;
+    }
 
     if (Array.isArray(data.features)) {
       if (data.features.includes(OnOff.Feature.Lighting)) {
@@ -116,6 +242,7 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
 
     this.registerDevice(matterbridgeDevice);
     this.knownDevices.set(deviceId, matterbridgeDevice);
+    this.storeDevice(deviceId, data);
   }
 
   // eslint-disable-next-line no-unused-vars
@@ -127,7 +254,7 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
     }
 
     for (const { clusterId, attribute, value } of changes.values()) {
-      device.setAttribute(clusterId, attribute, value, this.log);
+      device.updateAttribute(clusterId, attribute, value, this.log);
     }
   }
 

@@ -225,7 +225,7 @@ export class LanComm extends EventEmitter {
             address: info.address,
             moduleName: payload.moduleName,
             fwVersion: payload.fwVersion,
-            ...this.#getDeviceType(data.result.moduleName, mac),
+            ...this.getDeviceType(data.result.moduleName, mac),
           });
           this.#send({ method: 'getPilot', params: {} }, info.address);
           break;
@@ -267,7 +267,7 @@ export class LanComm extends EventEmitter {
     } while (true);
   }
 
-  #getDeviceType(moduleName: string, suffix: string) {
+  getDeviceType(moduleName: string, suffix: string) {
     if (moduleName.includes('SHRGB')) return {
       name: `Wiz RGB Bulb ${suffix}`,
       features: [OnOff.Feature.Lighting, LevelControl.Feature.Lighting, ColorControl.Feature.HueSaturation, ColorControl.Feature.ColorTemperature],
