@@ -279,6 +279,11 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
         attribute: 'colorTemperatureMireds',
         value: Math.max(147, Math.min(500, Math.round(1e6 / wizState.temp))),
       });
+      state.set(State.ColorMode, {
+        clusterId: ColorControl.Cluster.id,
+        attribute: 'colorMode',
+        value: ColorControl.ColorMode.ColorTemperatureMireds,
+      });
     }
 
     if ('r' in wizState && 'g' in wizState && 'b' in wizState) {
@@ -292,6 +297,11 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
         clusterId: ColorControl.Cluster.id,
         attribute: 'currentSaturation',
         value: s,
+      });
+      state.set(State.ColorMode, {
+        clusterId: ColorControl.Cluster.id,
+        attribute: 'colorMode',
+        value: ColorControl.ColorMode.CurrentHueAndCurrentSaturation,
       });
     }
 

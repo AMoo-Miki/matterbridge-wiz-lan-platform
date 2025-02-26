@@ -9,4 +9,5 @@ export enum State {
   ColorTemperature = 'ColorTemperature',
   ColorHue = 'ColorHue',
   ColorSaturation = 'ColorSaturation',
+  ColorMode = 'ColorMode',
 }
