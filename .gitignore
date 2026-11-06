@@ -3,3 +3,6 @@ dist/
 .idea/
 tsconfig.tsbuildinfo
 *.iml
+.pack/
+.test-data/
+*.tgz

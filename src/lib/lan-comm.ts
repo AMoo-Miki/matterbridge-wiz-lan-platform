@@ -4,12 +4,10 @@ import { AnsiLogger } from 'matterbridge/logger';
 import {
   colorTemperatureLight,
   dimmableLight,
-  onOffOutlet,
-  ColorControl,
-  LevelControl,
-  OnOff,
+  onOffPlugInUnit,
   PlatformConfig,
 } from 'matterbridge';
+import { ColorControl, LevelControl, OnOff } from 'matterbridge/matter/clusters';
 import { setTimeout as asyncTimeout } from 'timers/promises';
 import { Dict } from './types.js';
 import { getNetworks } from './utils.js';
@@ -296,7 +294,7 @@ export class LanComm extends EventEmitter {
     if (moduleName.includes('SOCKET')) return {
       name: `Wiz Outlet ${suffix}`,
       features: [OnOff.Feature.Lighting],
-      type: onOffOutlet,
+      type: onOffPlugInUnit,
     };
     return {};
   }

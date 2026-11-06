@@ -1,18 +1,8 @@
 import path from 'node:path';
 import * as fs from 'node:fs/promises';
 import { setTimeout, clearTimeout } from 'node:timers';
-import {
-  bridgedNode,
-  OnOff,
-  ColorControl,
-  LevelControl,
-  Matterbridge,
-  MatterbridgeDynamicPlatform,
-  MatterbridgeEndpoint,
-  PlatformConfig,
-  powerSource,
-  BridgedDeviceBasicInformation,
-} from 'matterbridge';
+import { bridgedNode, PlatformMatterbridge, MatterbridgeDynamicPlatform, MatterbridgeEndpoint, PlatformConfig, powerSource } from 'matterbridge';
+import { BridgedDeviceBasicInformation, ColorControl, LevelControl, OnOff } from 'matterbridge/matter/clusters';
 import { AnsiLogger } from 'matterbridge/logger';
 import { NodeStorage, NodeStorageManager } from 'matterbridge/storage';
 import { LanComm } from './lib/lan-comm.js';
@@ -33,12 +23,12 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
   private nodeStorage?: NodeStorage;
   private saveTimer?: ReturnType<typeof setTimeout>;
 
-  constructor(matterbridge: Matterbridge, log: AnsiLogger, config: PlatformConfig) {
+  constructor(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: PlatformConfig) {
     super(matterbridge, log, config);
 
-    if (this.verifyMatterbridgeVersion === undefined || typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('2.1.5')) {
+    if (this.verifyMatterbridgeVersion === undefined || typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.11.0')) {
       throw new Error(
-        `This plugin requires Matterbridge version >= "2.1.5". Please update Matterbridge from ${this.matterbridge.matterbridgeVersion} to the latest version in the frontend.`,
+        `This plugin requires Matterbridge version >= "3.11.0". Please update Matterbridge from ${this.matterbridge.matterbridgeVersion} to the latest version in the frontend.`,
       );
     }
 
@@ -164,7 +154,7 @@ export class MatterbridgeWizLanPlatform extends MatterbridgeDynamicPlatform {
 
     this.log.info('Adding device:', deviceId, JSON.stringify(data));
 
-    const matterbridgeDevice = new MatterbridgeEndpoint([data.type, bridgedNode, powerSource], { uniqueStorageKey: `wiz-${deviceId}` }, this.config.debug as boolean);
+    const matterbridgeDevice = new MatterbridgeEndpoint([data.type, bridgedNode, powerSource], { id: `wiz-${deviceId}` }, this.config.debug as boolean);
     matterbridgeDevice.log.logName = `Wiz:${deviceId}`;
     matterbridgeDevice
       .createDefaultIdentifyClusterServer()
