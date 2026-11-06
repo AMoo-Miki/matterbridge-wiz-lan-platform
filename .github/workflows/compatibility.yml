@@ -1,0 +1,33 @@
+name: Matterbridge compatibility
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm test
+      - run: npm run pack:plugin -- .pack/artifacts
+      - name: Verify the installed tarball
+        run: |
+          mkdir .pack/install-check
+          npm install --prefix .pack/install-check ./.pack/artifacts/matterbridge-wiz-lan-platform-2.1.1.tgz --offline --no-audit --no-fund
+          ln -s "$GITHUB_WORKSPACE/node_modules/matterbridge" .pack/install-check/node_modules/matterbridge
+          WIZ_PLUGIN_ROOT="$GITHUB_WORKSPACE/.pack/install-check/node_modules/matterbridge-wiz-lan-platform" node --test test/compatibility.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: matterbridge-wiz-lan-platform-2.1.1
+          path: .pack/artifacts/*.tgz
+          if-no-files-found: error

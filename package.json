@@ -1,13 +1,20 @@
 {
   "name": "matterbridge-wiz-lan-platform",
   "description": "Matterbridge plugin for Wiz over LAN",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "type": "module",
   "main": "dist/index.js",
-  "types": "dist/index.d.js",
+  "files": [
+    "dist/",
+    "matterbridge-wiz-lan-platform.schema.json",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepack": "npm run cleanBuild",
+    "pack:plugin": "npm run cleanBuild && node scripts/pack-plugin.mjs",
     "lint": "eslint src/**.ts",
     "lint:fix": "eslint src/**.ts --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
@@ -27,15 +34,16 @@
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
+    "matterbridge": "3.11.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.13.0 <23.0.0 || >=24.0.0 <25.0.0 || >=26.0.0 <27.0.0"
   },
   "author": "AMoo-Miki Inc.",
   "license": "Apache-2.0",
   "repository": {
-    "url": "https://github.com/AMoo-Miki/matterbridge-wiz-lan-platform"
+    "url": "https://github.com/shgeum/matterbridge-wiz-lan-platform"
   }
 }

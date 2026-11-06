@@ -17,15 +17,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Run clean install
         run: npm ci
 
-      - name: Setup Matterbridge
-        run: |
-          npm i -g matterbridge
-          npm link matterbridge
+      - name: Test Matterbridge compatibility
+        run: npm test
 
       - name: Lint, clean, and build
         run: |

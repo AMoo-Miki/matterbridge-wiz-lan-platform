@@ -1,4 +1,4 @@
-import type { ClusterId } from 'matterbridge';
+import type { ClusterId } from 'matterbridge/matter/types';
 
 export type Dict = { [key: string]: any };
 export type StateMap = Map<string, { clusterId: ClusterId, attribute: string, value: any }>;
